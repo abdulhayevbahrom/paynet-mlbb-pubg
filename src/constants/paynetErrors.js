@@ -1,0 +1,16 @@
+export const paynetErrors = {
+  methodMustBePost: { code: -32300, message: "Request method must be POST" },
+  parseError: { code: -32700, message: "JSON parse error" },
+  invalidRequest: { code: -32600, message: "Method ko'rsatilmagan" },
+  invalidParams: { code: -32602, message: "Majburiy parametr yo'q" },
+  internalError: { code: -32603, message: "Tizim xatosi" },
+  unauthorized: { code: 412, message: "Login yoki parol noto'g'ri" },
+  credentialsMissing: { code: 411, message: "Login yoki parol topilmadi" },
+  invalidService: { code: 305, message: "Invalid service id" },
+  validationFailed: { code: 100, message: "Parametr noto'g'ri" },
+  transactionExists: { code: 201, message: "Tranzaksiya allaqachon mavjud" },
+  transactionCanceled: { code: 202, message: "Tranzaksiya bekor qilingan" },
+  transactionNotFound: { code: 203, message: "Tranzaksiya topilmadi" },
+  invalidQuantity: { code: 304, message: "Miqdor noto'g'ri" },
+  invalidAmount: { code: 413, message: "Narx noto'g'ri" },
+};
