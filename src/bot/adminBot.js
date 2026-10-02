@@ -46,8 +46,12 @@ function isGwProductForGame(product, game) {
   ].filter(Boolean).join(" ").toLowerCase();
 
   if (game === "pubg") {
+    const slug = String(product.slug || "").toLowerCase();
     const isPubg = value.includes("pubg");
     const isUcPack = /\d+\s*uc\b/.test(value) || /\buc\b/.test(value);
+    const isGlobal = value.includes("global")
+      || slug === "pubg"
+      || slug === "pubgmobile";
     const excluded = [
       "prime",
       "subscription",
@@ -57,7 +61,7 @@ function isGwProductForGame(product, game) {
       "game key",
     ].some((term) => value.includes(term));
 
-    return isPubg && isUcPack && value.includes("global") && !excluded;
+    return isPubg && isUcPack && isGlobal && !excluded;
   }
 
   const isMlbb = value.includes("mlbb")
