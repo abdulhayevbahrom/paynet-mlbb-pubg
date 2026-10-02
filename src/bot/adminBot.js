@@ -11,6 +11,7 @@ import { findOrderByNumber } from "../services/order.service.js";
 import { getGwBalance, getGwProducts } from "../services/gw.service.js";
 
 const adminState = new Map();
+const GW_PICKER_PAGE_SIZE = 8;
 
 function isAdmin(msgOrQuery) {
   const id = msgOrQuery?.from?.id;
@@ -39,13 +40,31 @@ function isGwProductForGame(product, game) {
     product.gameName,
     product.category,
     product.productName,
+    product.serviceName,
+    product.region,
+    product.regionName,
   ].filter(Boolean).join(" ").toLowerCase();
 
-  if (game === "pubg") return value.includes("pubg");
+  if (game === "pubg") {
+    const isPubg = value.includes("pubg");
+    const isUcPack = /\d+\s*uc\b/.test(value) || /\buc\b/.test(value);
+    const excluded = [
+      "prime",
+      "subscription",
+      "material",
+      "emblem",
+      "gamekey",
+      "game key",
+    ].some((term) => value.includes(term));
 
-  return value.includes("mlbb")
+    return isPubg && isUcPack && !excluded;
+  }
+
+  const isMlbb = value.includes("mlbb")
     || value.includes("mobile legends")
     || value.includes("mobilelegends");
+
+  return isMlbb && value.includes("global");
 }
 
 function gwProductLine(product) {
@@ -53,11 +72,82 @@ function gwProductLine(product) {
   return `${name} | ${product.price}`;
 }
 
-async function sendGwCatalog(chatId, game) {
+function gwProductName(product) {
+  return product.serviceName || product.productName || product.gameName || product.id;
+}
+
+function gwProductQuantity(product) {
+  const name = gwProductName(product);
+  const bonusMatch = name.match(/(\d+)\s*\+\s*(\d+)/);
+  if (bonusMatch) {
+    return String(Number(bonusMatch[1]) + Number(bonusMatch[2]));
+  }
+
+  const numberMatch = name.match(/\d+/);
+  if (numberMatch) return numberMatch[0];
+
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+async function loadGwProductsForGame(game) {
   const response = await getGwProducts();
-  const products = (response.products || []).filter((product) => (
+  return (response.products || []).filter((product) => (
     product.status !== "inactive" && isGwProductForGame(product, game)
   ));
+}
+
+async function showGwProductPicker(chatId, page = 0, messageId = null) {
+  const state = adminState.get(chatId);
+  if (!state) return;
+
+  let products = state.gwProducts;
+  if (!products) {
+    products = await loadGwProductsForGame(state.game);
+    adminState.set(chatId, { ...state, gwProducts: products });
+  }
+
+  if (!products.length) {
+    adminState.delete(chatId);
+    return bot.sendMessage(chatId, "GW katalogida mos paket topilmadi.", mainMenu());
+  }
+
+  const pageCount = Math.ceil(products.length / GW_PICKER_PAGE_SIZE);
+  const safePage = Math.max(0, Math.min(page, pageCount - 1));
+  const start = safePage * GW_PICKER_PAGE_SIZE;
+  const pageProducts = products.slice(start, start + GW_PICKER_PAGE_SIZE);
+  const inlineKeyboard = pageProducts.map((product) => ([{
+    text: `${gwProductName(product)} | ${product.price}`.slice(0, 60),
+    callback_data: `gwselect:${product.id}`,
+  }]));
+  const navigation = [];
+
+  if (safePage > 0) {
+    navigation.push({ text: "⬅️", callback_data: `gwpage:${safePage - 1}` });
+  }
+  if (safePage < pageCount - 1) {
+    navigation.push({ text: "➡️", callback_data: `gwpage:${safePage + 1}` });
+  }
+  if (navigation.length) inlineKeyboard.push(navigation);
+
+  const text = `GW paketni tanlang (${safePage + 1}/${pageCount})`;
+  const options = { reply_markup: { inline_keyboard: inlineKeyboard } };
+
+  if (messageId) {
+    return bot.editMessageText(text, {
+      chat_id: chatId,
+      message_id: messageId,
+      ...options,
+    });
+  }
+
+  return bot.sendMessage(chatId, text, options);
+}
+
+async function sendGwCatalog(chatId, game) {
+  const products = await loadGwProductsForGame(game);
 
   if (!products.length) {
     return bot.sendMessage(chatId, "Paket topilmadi.", mainMenu());
@@ -117,7 +207,8 @@ function packageText(item, game) {
     `ID: <code>${item._id}</code>`,
     `Miqdor: <b>${item.quantity}</b> ${game.quantityLabel}`,
     `Narx: <b>${item.price}</b> so'm`,
-    `GW PID: <code>${item.gwPid || "SOZLANMAGAN"}</code>`,
+    `GW paket: <b>${item.gwProductName || item.gwPid || "SOZLANMAGAN"}</b>`,
+    ...(item.gwPrice !== undefined ? [`API narxi: <b>${item.gwPrice}</b>`] : []),
     `Holat: <b>${status}</b>`,
   ].join("\n");
 }
@@ -126,11 +217,8 @@ function packageKeyboard(item) {
   return {
     reply_markup: {
       inline_keyboard: [
-        [
-          { text: "✏️ Narx", callback_data: `pkg:price:${item._id}` },
-          { text: "🔢 Miqdor", callback_data: `pkg:quantity:${item._id}` },
-        ],
-        [{ text: "🔗 GW PID", callback_data: `pkg:gwpid:${item._id}` }],
+        [{ text: "✏️ Sotuv narxi", callback_data: `pkg:price:${item._id}` }],
+        [{ text: "🔗 GW paket", callback_data: `pkg:gwpid:${item._id}:${item.game}` }],
         [
           {
             text: item.isActive ? "⏸ O'chirish" : "▶️ Yoqish",
@@ -160,15 +248,11 @@ async function sendPackages(chatId, game) {
 
 async function startAddPackage(chatId, game) {
   adminState.set(chatId, {
-    action: "add_quantity",
+    action: "add_select_gwproduct",
     game: game.key,
   });
 
-  return bot.sendMessage(
-    chatId,
-    `${game.title} uchun paket miqdorini kiriting. Masalan: 55 yoki weekly`,
-    { reply_markup: { remove_keyboard: true } },
-  );
+  return showGwProductPicker(chatId);
 }
 
 async function handleStateMessage(msg, text) {
@@ -177,55 +261,38 @@ async function handleStateMessage(msg, text) {
 
   if (!state) return false;
 
-  if (state.action === "add_quantity") {
-    adminState.set(chatId, {
-      ...state,
-      action: "add_price",
-      quantity: text,
-    });
-
-    return bot.sendMessage(chatId, "Endi narxni so'mda kiriting. Masalan: 15000");
-  }
-
-  if (state.action === "add_price") {
+  if (state.action === "add_sale_price") {
     const price = Number(text);
 
     if (Number.isNaN(price) || price < 0) {
       return bot.sendMessage(chatId, "Narx noto'g'ri. Musbat raqam kiriting.");
     }
 
-    adminState.set(chatId, {
-      ...state,
-      action: "add_gwpid",
-      price,
-    });
-    return bot.sendMessage(chatId, "Endi API katalogidagi GW PID ni kiriting. Masalan: GWML86");
-  }
-
-  if (state.action === "add_gwpid") {
     try {
+      const product = state.selectedGwProduct;
       const created = await createPackage({
         game: state.game,
-        quantity: state.quantity,
-        price: state.price,
-        gwPid: text.trim().toUpperCase(),
+        quantity: gwProductQuantity(product),
+        price,
+        gwPid: product.id,
+        gwProductName: gwProductName(product),
+        gwPrice: product.price,
       });
-      const game = games[state.game];
 
       adminState.delete(chatId);
       return bot.sendMessage(
         chatId,
-        `Paket yaratildi:\n\n${packageText(created, game)}`,
+        `Paket yaratildi:\n\n${packageText(created, games[state.game])}`,
         { ...mainMenu(), parse_mode: "HTML" },
       );
     } catch (error) {
       adminState.delete(chatId);
+      console.error("Create package error:", error);
 
       if (error.code === 11000) {
-        return bot.sendMessage(chatId, "Bu miqdordagi paket allaqachon bor.", mainMenu());
+        return bot.sendMessage(chatId, "Bu API paketi allaqachon yaratilgan.", mainMenu());
       }
 
-      console.error("Create package error:", error);
       return bot.sendMessage(chatId, "Paket yaratishda xatolik bo'ldi.", mainMenu());
     }
   }
@@ -245,41 +312,6 @@ async function handleStateMessage(msg, text) {
     }
 
     return bot.sendMessage(chatId, "Narx yangilandi.", mainMenu());
-  }
-
-  if (state.action === "edit_quantity") {
-    try {
-      const updated = await updatePackage(state.packageId, { quantity: text });
-      adminState.delete(chatId);
-
-      if (!updated) {
-        return bot.sendMessage(chatId, "Paket topilmadi.", mainMenu());
-      }
-
-      return bot.sendMessage(chatId, "Miqdor yangilandi.", mainMenu());
-    } catch (error) {
-      adminState.delete(chatId);
-
-      if (error.code === 11000) {
-        return bot.sendMessage(chatId, "Bu miqdordagi paket allaqachon bor.", mainMenu());
-      }
-
-      console.error("Update package quantity error:", error);
-      return bot.sendMessage(chatId, "Miqdor yangilashda xatolik bo'ldi.", mainMenu());
-    }
-  }
-
-  if (state.action === "edit_gwpid") {
-    const updated = await updatePackage(state.packageId, {
-      gwPid: text.trim().toUpperCase(),
-    });
-    adminState.delete(chatId);
-
-    if (!updated) {
-      return bot.sendMessage(chatId, "Paket topilmadi.", mainMenu());
-    }
-
-    return bot.sendMessage(chatId, "GW PID yangilandi.", mainMenu());
   }
 
   if (state.action === "find_order") {
@@ -372,10 +404,80 @@ export function initAdminBot() {
       });
     }
 
-    const [scope, action, packageId, value] = query.data.split(":");
-    if (scope !== "pkg") return;
-
     const chatId = query.message.chat.id;
+    const [scope, action, packageId, value] = query.data.split(":");
+
+    if (scope === "gwpage") {
+      await bot.answerCallbackQuery(query.id);
+      return showGwProductPicker(
+        chatId,
+        Number(action),
+        query.message.message_id,
+      );
+    }
+
+    if (scope === "gwselect") {
+      const state = adminState.get(chatId);
+      const product = state?.gwProducts?.find((item) => item.id === action);
+
+      if (!state || !product) {
+        return bot.answerCallbackQuery(query.id, {
+          text: "Tanlov eskirgan. Qaytadan urinib ko'ring.",
+          show_alert: true,
+        });
+      }
+
+      try {
+        let saved;
+        const gwFields = {
+          gwPid: product.id,
+          gwProductName: gwProductName(product),
+          gwPrice: product.price,
+        };
+
+        if (state.action === "add_select_gwproduct") {
+          adminState.set(chatId, {
+            ...state,
+            action: "add_sale_price",
+            selectedGwProduct: product,
+          });
+          await bot.answerCallbackQuery(query.id);
+          return bot.sendMessage(
+            chatId,
+            `${gwProductName(product)} uchun mijoz to'laydigan narxni so'mda kiriting.`,
+          );
+        } else if (state.action === "edit_gwproduct") {
+          saved = await updatePackage(state.packageId, {
+            ...gwFields,
+            quantity: gwProductQuantity(product),
+          });
+        }
+
+        if (!saved) {
+          throw new Error("Paket topilmadi");
+        }
+
+        adminState.delete(chatId);
+        await bot.answerCallbackQuery(query.id, { text: "GW paket saqlandi" });
+        return bot.sendMessage(
+          chatId,
+          `Paket saqlandi:\n\n${packageText(saved, games[saved.game])}`,
+          { ...mainMenu(), parse_mode: "HTML" },
+        );
+      } catch (error) {
+        adminState.delete(chatId);
+        console.error("Save GW package error:", error);
+        await bot.answerCallbackQuery(query.id, { text: "Xatolik", show_alert: true });
+
+        if (error.code === 11000) {
+          return bot.sendMessage(chatId, "Bu miqdordagi paket allaqachon bor.", mainMenu());
+        }
+
+        return bot.sendMessage(chatId, "Paketni saqlashda xatolik bo'ldi.", mainMenu());
+      }
+    }
+
+    if (scope !== "pkg") return;
 
     if (action === "price") {
       adminState.set(chatId, { action: "edit_price", packageId });
@@ -383,16 +485,14 @@ export function initAdminBot() {
       return bot.sendMessage(chatId, "Yangi narxni so'mda kiriting.");
     }
 
-    if (action === "quantity") {
-      adminState.set(chatId, { action: "edit_quantity", packageId });
-      await bot.answerCallbackQuery(query.id);
-      return bot.sendMessage(chatId, "Yangi miqdorni kiriting.");
-    }
-
     if (action === "gwpid") {
-      adminState.set(chatId, { action: "edit_gwpid", packageId });
+      adminState.set(chatId, {
+        action: "edit_gwproduct",
+        packageId,
+        game: value,
+      });
       await bot.answerCallbackQuery(query.id);
-      return bot.sendMessage(chatId, "API katalogidagi yangi GW PID ni kiriting.");
+      return showGwProductPicker(chatId);
     }
 
     if (action === "toggle") {

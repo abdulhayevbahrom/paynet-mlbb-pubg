@@ -64,21 +64,23 @@ Bot menyusi:
 - `➕ PUBG paket` - yangi PUBG paket qo'shish
 - `🔎 Order qidirish` - `#1`, `#2` kabi tartib raqam orqali order topish
 - `💰 Balans` - GW API balansini faqat raqam ko'rinishida ko'rsatish
-- `🌐 GW MLBB katalog` - API'dagi MLBB paket nomi va narxi
-- `🌐 GW PUBG katalog` - API'dagi PUBG paket nomi va narxi
+- `🌐 GW MLBB katalog` - API'dagi faqat Global MLBB paket nomi va narxi
+- `🌐 GW PUBG katalog` - API'dagi faqat PUBG UC paket nomi va narxi
 
 Har bir paket uchun inline tugmalar:
 
 - `Narx` - paket narxini o'zgartirish
-- `Miqdor` - paket miqdorini o'zgartirish
-- `GW PID` - `GET /products` katalogidagi mos mahsulot `id` qiymatini biriktirish
+- `GW paket` - jonli API katalogidan mos top-up mahsulotini tugma orqali tanlash
 - `O'chirish/Yoqish` - paketni vaqtincha active/inactive qilish
 - `Delete` - paketni bazadan o'chirish
 
 Paynet faqat `isActive: true` bo'lgan paketlarni qabul qiladi.
-Top-up ishlashi uchun paketda `gwPid` ham sozlangan bo'lishi shart. Yangi paket
-yaratishda bot GW PID ni so'raydi; eski paketlarga `🔗 GW PID` tugmasi orqali
-biriktiriladi.
+Top-up ishlashi uchun paket GW katalogidan yaratiladi. Admin yangi paket
+yaratishda jonli GW mahsulotini tanlaydi, so'ng mijoz Paynet orqali to'laydigan
+sotuv narxini so'mda kiritadi. Paket miqdori, nomi, API narxi va PID avtomatik
+saqlanadi. Tranzaksiyada mijozdan GW API narxi emas, admin belgilagan sotuv narxi
+yechiladi. Eski paketdagi GW mahsulotini `🔗 GW paket` tugmasi orqali almashtirish
+mumkin.
 
 ## GW Ultimate top-up
 

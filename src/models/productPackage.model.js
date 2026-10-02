@@ -19,6 +19,15 @@ const productPackageSchema = new mongoose.Schema(
       uppercase: true,
       default: "",
     },
+    gwProductName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    gwPrice: {
+      type: Number,
+      min: 0,
+    },
     price: {
       type: Number,
       required: true,

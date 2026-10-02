@@ -12,12 +12,21 @@ export async function listPackages(game) {
   return ProductPackage.find({ game }).sort({ isActive: -1, price: 1, quantity: 1 });
 }
 
-export async function createPackage({ game, quantity, price, gwPid }) {
+export async function createPackage({
+  game,
+  quantity,
+  price,
+  gwPid,
+  gwProductName,
+  gwPrice,
+}) {
   return ProductPackage.create({
     game,
     quantity: String(quantity),
     price: Number(price),
     gwPid,
+    gwProductName,
+    gwPrice,
     isActive: true,
   });
 }
