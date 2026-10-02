@@ -20,15 +20,31 @@ export async function createPackage({
   gwProductName,
   gwPrice,
 }) {
-  return ProductPackage.create({
-    game,
-    quantity: String(quantity),
-    price: Number(price),
-    gwPid,
-    gwProductName,
-    gwPrice,
-    isActive: true,
-  });
+  return ProductPackage.findOneAndUpdate(
+    {
+      game,
+      quantity: String(quantity),
+    },
+    {
+      $set: {
+        price: Number(price),
+        gwPid,
+        gwProductName,
+        gwPrice,
+        isActive: true,
+      },
+      $setOnInsert: {
+        game,
+        quantity: String(quantity),
+      },
+    },
+    {
+      new: true,
+      upsert: true,
+      runValidators: true,
+      setDefaultsOnInsert: true,
+    },
+  );
 }
 
 export async function updatePackage(packageId, updates) {

@@ -59,6 +59,9 @@ const orderSchema = new mongoose.Schema(
     gwResponse: {
       type: mongoose.Schema.Types.Mixed,
     },
+    telegramMessageId: {
+      type: Number,
+    },
     fields: {
       type: mongoose.Schema.Types.Mixed,
       required: true,

@@ -284,7 +284,7 @@ async function handleStateMessage(msg, text) {
       adminState.delete(chatId);
       return bot.sendMessage(
         chatId,
-        `Paket yaratildi:\n\n${packageText(created, games[state.game])}`,
+        `Paket saqlandi:\n\n${packageText(created, games[state.game])}`,
         { ...mainMenu(), parse_mode: "HTML" },
       );
     } catch (error) {

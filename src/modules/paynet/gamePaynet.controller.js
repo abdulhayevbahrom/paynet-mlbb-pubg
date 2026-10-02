@@ -1,6 +1,9 @@
 import Order from "../../models/order.model.js";
 import { paynetErrors } from "../../constants/paynetErrors.js";
-import { notifyOrder } from "../../services/telegram.service.js";
+import {
+  notifyOrder,
+  updateOrderNotification,
+} from "../../services/telegram.service.js";
 import { checkMlbbAccount } from "../../services/mlbb.service.js";
 import { findActivePackage } from "../../services/package.service.js";
 import { getNextSequence } from "../../services/counter.service.js";
@@ -20,6 +23,10 @@ import {
   tashkentTimestamp,
   tashkentTransactionTimestamp,
 } from "../../utils/time.js";
+
+const gwOrderTrackers = new Map();
+const GW_POLL_INTERVAL_MS = 5000;
+const GW_POLL_MAX_ATTEMPTS = 120;
 
 function validateGameFields(game, fields = {}) {
   if (game.key === "mlbb") {
@@ -123,6 +130,47 @@ function buildOrderMessage({ game, identity, quantity, order }) {
   ];
 }
 
+function identityFromOrder(order) {
+  if (order.game === "mlbb") {
+    return {
+      userId: String(order.fields?.user_id || ""),
+      zoneId: String(order.fields?.zone_id || ""),
+    };
+  }
+
+  return { playerId: String(order.fields?.player_id || "") };
+}
+
+async function refreshOrderNotification(order, game) {
+  const lines = buildOrderMessage({
+    game,
+    identity: identityFromOrder(order),
+    quantity: order.quantity,
+    order,
+  });
+
+  if (!order.telegramMessageId) {
+    const message = await notifyOrder({
+      game: game.key,
+      groupId: game.groupId,
+      lines,
+    });
+
+    if (message?.message_id) {
+      order.telegramMessageId = message.message_id;
+      await order.save();
+    }
+    return;
+  }
+
+  await updateOrderNotification({
+    game: game.key,
+    groupId: game.groupId,
+    messageId: order.telegramMessageId,
+    lines,
+  });
+}
+
 function localStatus(gwStatus) {
   if (gwStatus === "completed") return "success";
   if (gwStatus === "cancelled") return "failed";
@@ -137,6 +185,47 @@ async function applyGwResponse(order, response) {
   order.status = localStatus(response?.status);
   await order.save();
   return order;
+}
+
+function trackGwOrder(orderId, game, attempt = 0) {
+  const trackerKey = String(orderId);
+  if (gwOrderTrackers.has(trackerKey) || attempt >= GW_POLL_MAX_ATTEMPTS) return;
+
+  const timer = setTimeout(async () => {
+    gwOrderTrackers.delete(trackerKey);
+
+    try {
+      const order = await Order.findById(orderId);
+      if (!order || order.status !== "pending" || !order.gwOrderId) return;
+
+      const gwResponse = await getGwOrder(order.gwOrderId);
+      await applyGwResponse(order, gwResponse);
+      await refreshOrderNotification(order, game);
+
+      if (order.status === "pending") {
+        trackGwOrder(orderId, game, attempt + 1);
+      }
+    } catch (error) {
+      console.error(`GW ${game.key} background status error:`, error.message);
+      trackGwOrder(orderId, game, attempt + 1);
+    }
+  }, GW_POLL_INTERVAL_MS);
+
+  timer.unref?.();
+  gwOrderTrackers.set(trackerKey, timer);
+}
+
+export async function resumePendingGwOrders(game) {
+  const pendingOrders = await Order.find({
+    provider: "paynet",
+    game: game.key,
+    status: "pending",
+    gwOrderId: { $exists: true, $ne: "" },
+  }).select("_id");
+
+  for (const order of pendingOrders) {
+    trackGwOrder(order._id, game);
+  }
 }
 
 function gwPaynetError(error) {
@@ -330,7 +419,7 @@ export function createGamePaynetController(game) {
           );
         }
 
-        await notifyOrder({
+        const telegramMessage = await notifyOrder({
           game: game.key,
           groupId: game.groupId,
           lines: buildOrderMessage({
@@ -340,6 +429,15 @@ export function createGamePaynetController(game) {
             order,
           }),
         });
+
+        if (telegramMessage?.message_id) {
+          order.telegramMessageId = telegramMessage.message_id;
+          await order.save();
+        }
+
+        if (order.status === "pending") {
+          trackGwOrder(order._id, game);
+        }
 
         return res.json(
           paynetResult(id, {
@@ -389,6 +487,7 @@ export function createGamePaynetController(game) {
           try {
             const gwResponse = await getGwOrder(order.gwOrderId);
             await applyGwResponse(order, gwResponse);
+            await refreshOrderNotification(order, game);
           } catch (error) {
             console.error(`GW ${game.key} status error:`, error);
 

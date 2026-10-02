@@ -7,11 +7,17 @@ import connectDB from "./config/db.js";
 import { env } from "./config/env.js";
 import { initAdminBot } from "./bot/adminBot.js";
 import { appErrorHandler, jsonParseErrorHandler } from "./middlewares/error.middleware.js";
+import { resumePendingGwOrders } from "./modules/paynet/gamePaynet.controller.js";
+import { gameList } from "./config/products.js";
 
 const app = express();
 
 await connectDB();
 initAdminBot();
+
+for (const game of gameList) {
+  await resumePendingGwOrders(game);
+}
 
 app.use(express.json());
 app.use(jsonParseErrorHandler);

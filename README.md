@@ -82,6 +82,9 @@ saqlanadi. Tranzaksiyada mijozdan GW API narxi emas, admin belgilagan sotuv narx
 yechiladi. Eski paketdagi GW mahsulotini `🔗 GW paket` tugmasi orqali almashtirish
 mumkin.
 
+Bir xil o'yin va miqdordagi paket bazada mavjud bo'lsa, qayta yaratishda duplicate
+xato berilmaydi: mavjud paketning GW bog'lanishi va sotuv narxi yangilanadi.
+
 ## GW Ultimate top-up
 
 `PerformTransaction` quyidagi oqimda ishlaydi:
@@ -90,6 +93,10 @@ mumkin.
 2. Paynet `transactionId` qiymati idempotent `trxid` sifatida `POST /orders` ga yuboriladi.
 3. GW javobi (`processing`, `completed`, `cancelled`) lokal orderga saqlanadi.
 4. `CheckTransaction` paytida `processing` order `GET /orders/:orderId` orqali yangilanadi.
+
+`processing` orderlar server tomonidan har 5 soniyada avtomatik tekshiriladi.
+Order `completed` yoki `cancelled` bo'lganda dastlabki Telegram xabari yangi status
+bilan tahrirlanadi. Avtomatik kuzatuv 10 daqiqagacha davom etadi.
 
 PUBG uchun `userId` sifatida `player_id`, MLBB uchun `userId` va `zoneId`
 yuboriladi. GW API xatolari lokal orderdagi `gwError` va `gwResponse` maydonlarida
