@@ -13,6 +13,8 @@ npm install
 2. `.env.example` asosida `.env` yarating.
 
 `GW_API_KEY` ga GW Ultimate API kalitini yozing.
+GW API so'rovlari server allowlist'i bilan mos ishlashi uchun majburan IPv4
+orqali yuboriladi.
 
 3. Development server:
 

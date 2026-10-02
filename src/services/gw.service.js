@@ -1,9 +1,16 @@
 import axios from "axios";
+import https from "node:https";
 import { env } from "../config/env.js";
+
+const ipv4Agent = new https.Agent({
+  family: 4,
+  keepAlive: true,
+});
 
 const client = axios.create({
   baseURL: env.gw.baseUrl,
   timeout: env.gw.timeoutMs,
+  httpsAgent: ipv4Agent,
   headers: {
     "Content-Type": "application/json",
     "X-API-Key": env.gw.apiKey,
