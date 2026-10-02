@@ -187,7 +187,6 @@ function orderText(order) {
     `⚙️ Holat: <b>${order.status}</b>`,
     `💎 Miqdor: <b>${order.quantity}</b>`,
     `💰 Narx: <b>${order.priceAmount}</b> so'm`,
-    `🧾 Paynet amount: <b>${order.amountInTiyin}</b>`,
     `🔖 Tranzaksiya: <code>${order.transId}</code>`,
     `🔗 GW order: <code>${order.gwOrderId || "-"}</code>`,
     `🌐 GW holat: <b>${order.gwStatus || "-"}</b>`,
@@ -219,8 +218,10 @@ function packageKeyboard(item) {
   return {
     reply_markup: {
       inline_keyboard: [
-        [{ text: "✏️ Sotuv narxi", callback_data: `pkg:price:${item._id}` }],
-        [{ text: "🔗 GW paket", callback_data: `pkg:gwpid:${item._id}:${item.game}` }],
+        [
+          { text: "✏️ Sotuv narxi", callback_data: `pkg:price:${item._id}` },
+          { text: "🔗 GW paket", callback_data: `pkg:gwpid:${item._id}:${item.game}` },
+        ],
         [
           {
             text: item.isActive ? "⏸ O'chirish" : "▶️ Yoqish",
