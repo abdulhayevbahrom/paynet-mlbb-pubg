@@ -57,7 +57,7 @@ function isGwProductForGame(product, game) {
       "game key",
     ].some((term) => value.includes(term));
 
-    return isPubg && isUcPack && !excluded;
+    return isPubg && isUcPack && value.includes("global") && !excluded;
   }
 
   const isMlbb = value.includes("mlbb")
@@ -177,19 +177,18 @@ function orderText(order) {
   if (!order) return "Order topilmadi.";
 
   return [
-    `Order: <b>#${order.orderNumber}</b>`,
-    `Game: <b>${order.game.toUpperCase()}</b>`,
-    `Provider: <b>${order.provider}</b>`,
-    `Status: <b>${order.status}</b>`,
-    `Miqdor: <b>${order.quantity}</b>`,
-    `Narx: <b>${order.priceAmount}</b> so'm`,
-    `Paynet amount: <b>${order.amountInTiyin}</b>`,
-    `Trans ID: <code>${order.transId}</code>`,
-    `GW order ID: <code>${order.gwOrderId || "-"}</code>`,
-    `GW status: <b>${order.gwStatus || "-"}</b>`,
-    ...(order.gwError ? [`GW error: <code>${order.gwError}</code>`] : []),
-    `Mongo ID: <code>${order._id}</code>`,
-    `Sana: <i>${new Date(order.createdAt).toLocaleString()}</i>`,
+    `📦 Order: <b>#${order.orderNumber}</b>`,
+    `🎮 O'yin: <b>${order.game.toUpperCase()}</b>`,
+    `💳 Provider: <b>${order.provider}</b>`,
+    `⚙️ Holat: <b>${order.status}</b>`,
+    `💎 Miqdor: <b>${order.quantity}</b>`,
+    `💰 Narx: <b>${order.priceAmount}</b> so'm`,
+    `🧾 Paynet amount: <b>${order.amountInTiyin}</b>`,
+    `🔖 Tranzaksiya: <code>${order.transId}</code>`,
+    `🔗 GW order: <code>${order.gwOrderId || "-"}</code>`,
+    `🌐 GW holat: <b>${order.gwStatus || "-"}</b>`,
+    ...(order.gwError ? [`⚠️ GW xatolik: <code>${order.gwError}</code>`] : []),
+    `📅 Sana: <i>${new Date(order.createdAt).toLocaleString()}</i>`,
   ].join("\n");
 }
 
@@ -203,13 +202,12 @@ function packageText(item, game) {
   const status = item.isActive ? "active" : "inactive";
 
   return [
-    `<b>${game.title}</b>`,
-    `ID: <code>${item._id}</code>`,
-    `Miqdor: <b>${item.quantity}</b> ${game.quantityLabel}`,
-    `Narx: <b>${item.price}</b> so'm`,
-    `GW paket: <b>${item.gwProductName || item.gwPid || "SOZLANMAGAN"}</b>`,
-    ...(item.gwPrice !== undefined ? [`API narxi: <b>${item.gwPrice}</b>`] : []),
-    `Holat: <b>${status}</b>`,
+    `🎮 O'yin: <b>${game.title}</b>`,
+    `💎 Miqdor: <b>${item.quantity}</b> ${game.quantityLabel}`,
+    `💰 Sotuv narxi: <b>${item.price}</b> so'm`,
+    `🔗 GW paket: <b>${item.gwProductName || "SOZLANMAGAN"}</b>`,
+    ...(item.gwPrice !== undefined ? [`💵 API narxi: <b>${item.gwPrice}</b>`] : []),
+    `⚙️ Holat: <b>${status}</b>`,
   ].join("\n");
 }
 

@@ -65,7 +65,7 @@ Bot menyusi:
 - `🔎 Order qidirish` - `#1`, `#2` kabi tartib raqam orqali order topish
 - `💰 Balans` - GW API balansini faqat raqam ko'rinishida ko'rsatish
 - `🌐 GW MLBB katalog` - API'dagi faqat Global MLBB paket nomi va narxi
-- `🌐 GW PUBG katalog` - API'dagi faqat PUBG UC paket nomi va narxi
+- `🌐 GW PUBG katalog` - API'dagi faqat Global PUBG UC paket nomi va narxi
 
 Har bir paket uchun inline tugmalar:
 
