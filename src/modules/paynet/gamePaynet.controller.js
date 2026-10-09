@@ -28,6 +28,11 @@ const gwOrderTrackers = new Map();
 const GW_POLL_INTERVAL_MS = 5000;
 const GW_POLL_MAX_ATTEMPTS = 120;
 
+function providerTransactionId(order) {
+  const providerTrnId = Number(order.providerTrnId);
+  return Number.isInteger(providerTrnId) ? providerTrnId : order.orderNumber;
+}
+
 function validateGameFields(game, fields = {}) {
   if (game.key === "mlbb") {
     const { user_id: userId, zone_id: zoneId, quantity } = fields;
@@ -442,7 +447,7 @@ export function createGamePaynetController(game) {
         return res.json(
           paynetResult(id, {
             timestamp: tashkentTimestamp(),
-            providerTrnId: order._id,
+            providerTrnId: providerTransactionId(order),
             fields: {
               price: amount,
               message: "To'lov muvaffaqiyatli amalga oshirildi",
@@ -508,7 +513,7 @@ export function createGamePaynetController(game) {
           paynetResult(id, {
             transactionState: 1,
             timestamp: tashkentTransactionTimestamp(order.updatedAt),
-            providerTrnId: order._id,
+            providerTrnId: providerTransactionId(order),
           }),
         );
       } catch (error) {
@@ -550,7 +555,7 @@ export function createGamePaynetController(game) {
             statements: orders.map((order) => ({
               transactionId: order.transId,
               amount: order.amountInTiyin,
-              providerTrnId: order._id,
+              providerTrnId: providerTransactionId(order),
               timestamp: tashkentTimestamp(order.updatedAt),
             })),
           }),

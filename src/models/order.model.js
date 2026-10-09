@@ -26,7 +26,11 @@ const orderSchema = new mongoose.Schema(
       index: true,
     },
     providerTrnId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Number,
+      required: true,
+      unique: true,
+      min: 1,
+      validate: Number.isInteger,
     },
     quantity: {
       type: String,
@@ -72,9 +76,9 @@ const orderSchema = new mongoose.Schema(
   },
 );
 
-orderSchema.pre("save", function setProviderTrnId(next) {
+orderSchema.pre("validate", function setProviderTrnId(next) {
   if (!this.providerTrnId) {
-    this.providerTrnId = this._id;
+    this.providerTrnId = this.orderNumber;
   }
 
   next();
