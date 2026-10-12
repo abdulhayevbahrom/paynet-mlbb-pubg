@@ -7,6 +7,7 @@ export const paynetErrors = {
   unauthorized: { code: 412, message: "Login yoki parol noto'g'ri" },
   credentialsMissing: { code: 411, message: "Login yoki parol topilmadi" },
   invalidService: { code: 305, message: "Invalid service id" },
+  invalidClient: { code: 302, message: "Mijoz ma'lumotlari noto'g'ri" },
   validationFailed: { code: 100, message: "Parametr noto'g'ri" },
   transactionExists: { code: 201, message: "Tranzaksiya allaqachon mavjud" },
   transactionCanceled: { code: 202, message: "Tranzaksiya bekor qilingan" },

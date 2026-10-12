@@ -64,7 +64,7 @@ function validateGameFields(game, fields = {}) {
   if (!String(playerId).startsWith("5")) {
     return {
       ok: false,
-      error: { ...paynetErrors.validationFailed, message: "Player ID 5 bilan boshlansin" },
+      error: { ...paynetErrors.invalidClient, message: "Player ID 5 bilan boshlansin" },
     };
   }
 
