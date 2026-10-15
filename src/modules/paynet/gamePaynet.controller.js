@@ -389,7 +389,12 @@ export function createGamePaynetController(game) {
             priceAmount: selectedPackage.price,
             amountInTiyin: amount,
             status: "pending",
-            fields: params.fields,
+            fields: game.key === "pubg"
+              ? {
+                  player_id: validated.identity.playerId,
+                  quantity: validated.quantity,
+                }
+              : params.fields,
           });
         }
 
