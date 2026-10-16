@@ -296,9 +296,7 @@ export function createGamePaynetController(game) {
         if (!fields) {
           return res.json(
             paynetError(id, {
-              ...(game.key === "mlbb"
-                ? paynetErrors.invalidClient
-                : paynetErrors.validationFailed),
+              ...paynetErrors.invalidClient,
               message: "Mijoz ma'lumotlari topilmadi",
             }),
           );
