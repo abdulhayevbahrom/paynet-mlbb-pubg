@@ -35,9 +35,9 @@ function providerTransactionId(order) {
 
 function validateGameFields(game, fields = {}) {
   if (game.key === "mlbb") {
-    const { user_id: userId, zone_id: zoneId, quantity } = fields;
+    const { user_id: userId, zone_id: zoneId, product } = fields;
 
-    if (!userId || !zoneId || !quantity) {
+    if (!userId || !zoneId || !product) {
       return { ok: false, error: paynetErrors.invalidParams };
     }
 
@@ -51,13 +51,13 @@ function validateGameFields(game, fields = {}) {
     return {
       ok: true,
       identity: { userId: String(userId), zoneId: String(zoneId) },
-      quantity: String(quantity),
+      quantity: String(product),
     };
   }
 
-  const { player_id: playerId, quantity } = fields;
+  const { player_id: playerId, product } = fields;
 
-  if (!playerId || !quantity) {
+  if (!playerId || !product) {
     return { ok: false, error: paynetErrors.invalidParams };
   }
 
@@ -71,7 +71,7 @@ function validateGameFields(game, fields = {}) {
   return {
     ok: true,
     identity: { playerId: String(playerId) },
-    quantity: String(quantity),
+    quantity: String(product),
   };
 }
 
@@ -392,7 +392,7 @@ export function createGamePaynetController(game) {
             fields: game.key === "pubg"
               ? {
                   player_id: validated.identity.playerId,
-                  quantity: validated.quantity,
+                  product: validated.quantity,
                 }
               : params.fields,
           });

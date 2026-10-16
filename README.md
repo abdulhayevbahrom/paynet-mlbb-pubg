@@ -123,7 +123,7 @@ Har bir orderda MongoDB `_id` bilan birga `orderNumber` ham bo'ladi. Bu raqam `1
     "fields": {
       "user_id": "12345678",
       "zone_id": "1234",
-      "quantity": "55"
+      "product": "55"
     }
   }
 }
@@ -143,7 +143,7 @@ Har bir orderda MongoDB `_id` bilan birga `orderNumber` ham bo'ladi. Bu raqam `1
     "fields": {
       "user_id": "12345678",
       "zone_id": "1234",
-      "quantity": "55"
+      "product": "55"
     }
   }
 }
@@ -160,7 +160,7 @@ Har bir orderda MongoDB `_id` bilan birga `orderNumber` ham bo'ladi. Bu raqam `1
     "serviceId": 4,
     "fields": {
       "player_id": "5123456789",
-      "quantity": "60"
+      "product": "60"
     }
   }
 }
@@ -179,7 +179,7 @@ Har bir orderda MongoDB `_id` bilan birga `orderNumber` ham bo'ladi. Bu raqam `1
     "amount": 1400000,
     "fields": {
       "player_id": "5123456789",
-      "quantity": "60"
+      "product": "60"
     }
   }
 }
