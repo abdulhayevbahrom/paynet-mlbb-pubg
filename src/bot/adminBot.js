@@ -9,6 +9,7 @@ import {
 } from "../services/package.service.js";
 import { findOrderByNumber } from "../services/order.service.js";
 import { getGwBalance, getGwProducts } from "../services/gw.service.js";
+import { getPubgOffers, getFazerBalance } from "../services/fazercards.service.js";
 
 const adminState = new Map();
 const GW_PICKER_PAGE_SIZE = 8;
@@ -23,7 +24,7 @@ function mainMenu() {
     reply_markup: {
       keyboard: [
         ["📦 MLBB paketlar", "📦 PUBG paketlar"],
-        ["🌐 GW MLBB katalog", "🌐 GW PUBG katalog"],
+        ["🌐 GW MLBB katalog", "🌐 FazerCards PUBG katalog"],
         ["➕ MLBB paket", "➕ PUBG paket"],
         ["💰 Balans", "🔎 Order qidirish"],
         ["↩️ Bekor qilish"],
@@ -73,7 +74,7 @@ function isGwProductForGame(product, game) {
 
 function gwProductLine(product) {
   const name = product.serviceName || product.productName || product.gameName || "-";
-  return `${name} | ${product.price}`;
+  return `${product.categoryName ? `${product.categoryName}: ` : ""}${name} | ${product.price} USD`;
 }
 
 function gwProductName(product) {
@@ -97,6 +98,7 @@ function gwProductQuantity(product) {
 }
 
 async function loadGwProductsForGame(game) {
+  if (game === "pubg") return getPubgOffers();
   const response = await getGwProducts();
   return (response.products || []).filter((product) => (
     product.status !== "inactive" && isGwProductForGame(product, game)
@@ -115,7 +117,7 @@ async function showGwProductPicker(chatId, page = 0, messageId = null) {
 
   if (!products.length) {
     adminState.delete(chatId);
-    return bot.sendMessage(chatId, "GW katalogida mos paket topilmadi.", mainMenu());
+    return bot.sendMessage(chatId, state.game === "pubg" ? "FazerCards katalogida mos PUBG UC paketi topilmadi." : "GW katalogida mos paket topilmadi.", mainMenu());
   }
 
   const pageCount = Math.ceil(products.length / GW_PICKER_PAGE_SIZE);
@@ -123,7 +125,7 @@ async function showGwProductPicker(chatId, page = 0, messageId = null) {
   const start = safePage * GW_PICKER_PAGE_SIZE;
   const pageProducts = products.slice(start, start + GW_PICKER_PAGE_SIZE);
   const inlineKeyboard = pageProducts.map((product) => ([{
-    text: `${gwProductName(product)} | ${product.price}`.slice(0, 60),
+    text: `${product.categoryName ? `${product.categoryName}: ` : ""}${gwProductName(product)} | ${product.price} USD`.slice(0, 60),
     callback_data: `gwselect:${product.id}`,
   }]));
   const navigation = [];
@@ -208,7 +210,7 @@ function packageText(item, game) {
     `🎮 O'yin: <b>${game.title}</b>`,
     `💎 Miqdor: <b>${item.quantity}</b> ${game.quantityLabel}`,
     `💰 Sotuv narxi: <b>${item.price}</b> so'm`,
-    `🔗 GW paket: <b>${item.gwProductName || "SOZLANMAGAN"}</b>`,
+    `🔗 ${item.game === "pubg" ? "FazerCards" : "GW"} paket: <b>${item.game === "pubg" && !item.gwPid?.includes("|") ? "QAYTA TANLANG" : item.gwProductName || "SOZLANMAGAN"}</b>`,
     ...(item.gwPrice !== undefined ? [`💵 API narxi: <b>${item.gwPrice}</b>`] : []),
     `⚙️ Holat: <b>${status}</b>`,
   ].join("\n");
@@ -220,7 +222,7 @@ function packageKeyboard(item) {
       inline_keyboard: [
         [
           { text: "✏️ Sotuv narxi", callback_data: `pkg:price:${item._id}` },
-          { text: "🔗 GW paket", callback_data: `pkg:gwpid:${item._id}:${item.game}` },
+          { text: item.game === "pubg" ? "🔗 FazerCards paket" : "🔗 GW paket", callback_data: `pkg:gwpid:${item._id}:${item.game}` },
         ],
         [
           {
@@ -370,15 +372,15 @@ export function initAdminBot() {
 
     if (text === "💰 Balans") {
       try {
-        const balance = await getGwBalance();
-        return bot.sendMessage(chatId, String(balance.balanceUsd));
+        const [gw, fazer] = await Promise.allSettled([getGwBalance(), getFazerBalance()]);
+        return bot.sendMessage(chatId, `MLBB GW: ${gw.status === "fulfilled" ? gw.value.balanceUsd : "xato"} USD\nPUBG FazerCards: ${fazer.status === "fulfilled" ? fazer.value.balance : "API kalit yo‘q yoki xato"} USD`);
       } catch (error) {
         console.error("GW balance error:", error);
         return bot.sendMessage(chatId, "Xatolik");
       }
     }
 
-    if (text === "🌐 GW MLBB katalog" || text === "🌐 GW PUBG katalog") {
+    if (text === "🌐 GW MLBB katalog" || text === "🌐 FazerCards PUBG katalog") {
       try {
         const game = text.includes("MLBB") ? "mlbb" : "pubg";
         return await sendGwCatalog(chatId, game);

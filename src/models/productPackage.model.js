@@ -16,7 +16,6 @@ const productPackageSchema = new mongoose.Schema(
     gwPid: {
       type: String,
       trim: true,
-      uppercase: true,
       default: "",
     },
     gwProductName: {

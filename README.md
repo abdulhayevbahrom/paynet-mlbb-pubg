@@ -188,3 +188,12 @@ Har bir orderda MongoDB `_id` bilan birga `orderNumber` ham bo'ladi. Bu raqam `1
 ## Eslatma
 
 Paynet `amount` qiymatini tiyin formatida yuboradi. Masalan, 15 000 so'm uchun `1500000` yuborilishi kerak.
+
+## FazerCards PUBG integratsiyasi
+
+PUBG uchun `.env` ga `FAZERCARDS_API_KEY` qo‘shing. API manzili standart holda
+`https://api.fzr.cards/api/v2`. MLBB eski GW orqali ishlaydi. Admin botdagi
+`🌐 FazerCards PUBG katalog` va `🔗 FazerCards paket` orqali PUBG paketlarini
+yangidan bog‘lang. Eski GW PID bilan bog‘langan PUBG paketlari buyurtma qabul
+qilmaydi. FazerCards top-up buyurtmasi `Idempotency-Key` bilan yuboriladi; holati
+`/orders/:orderId` orqali kuzatiladi.

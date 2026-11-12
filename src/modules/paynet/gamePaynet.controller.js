@@ -13,7 +13,7 @@ import {
   verifyGwAccount,
   GwApiError,
 } from "../../services/gw.service.js";
-import { randomUUID } from "node:crypto";
+import { createPubgOrder, getPubgOrder, validatePubgId } from "../../services/fazercards.service.js";
 import {
   internalPaynetError,
   paynetError,
@@ -77,19 +77,15 @@ function validateGameFields(game, fields = {}) {
 
 async function enrichInformation(game, identity) {
   if (game.key === "pubg") {
-    const account = await verifyGwAccount({
-      game: "pubg",
-      identity,
-      trxid: `CHK-PUBG-${randomUUID()}`,
-    });
+    const account = await validatePubgId(identity.playerId);
 
-    if (!account?.success) {
+    if (!account?.valid) {
       return null;
     }
 
     return {
       player_id: identity.playerId,
-      player_name: account.playerName || account.name || "",
+      player_name: account.player_name || "",
     };
   }
 
@@ -178,16 +174,16 @@ async function refreshOrderNotification(order, game) {
 
 function localStatus(gwStatus) {
   if (gwStatus === "completed") return "success";
-  if (gwStatus === "cancelled") return "failed";
+  if (["cancelled", "failed", "refunded"].includes(gwStatus)) return "failed";
   return "pending";
 }
 
 async function applyGwResponse(order, response) {
-  order.gwOrderId = response?.orderId || order.gwOrderId;
-  order.gwStatus = response?.status || order.gwStatus;
+  order.gwOrderId = response?.order?.id || response?.orderId || order.gwOrderId;
+  order.gwStatus = response?.order?.status || response?.status || order.gwStatus;
   order.gwError = response?.error || undefined;
   order.gwResponse = response;
-  order.status = localStatus(response?.status);
+  order.status = localStatus(response?.order?.status || response?.status);
   await order.save();
   return order;
 }
@@ -203,7 +199,7 @@ function trackGwOrder(orderId, game, attempt = 0) {
       const order = await Order.findById(orderId);
       if (!order || order.status !== "pending" || !order.gwOrderId) return;
 
-      const gwResponse = await getGwOrder(order.gwOrderId);
+      const gwResponse = await (game.key === "pubg" && /^ord-\d+$/.test(order.gwOrderId) ? getPubgOrder(order.gwOrderId) : getGwOrder(order.gwOrderId));
       await applyGwResponse(order, gwResponse);
       await refreshOrderNotification(order, game);
 
@@ -283,11 +279,11 @@ export function createGamePaynetController(game) {
           return res.json(paynetError(id, paynetErrors.invalidQuantity));
         }
 
-        if (!selectedPackage.gwPid) {
+        if (!selectedPackage.gwPid || (game.key === "pubg" && !selectedPackage.gwPid.includes("|"))) {
           return res.json(
             paynetError(id, {
               ...paynetErrors.invalidQuantity,
-              message: "Paket uchun GW PID sozlanmagan",
+              message: game.key === "pubg" ? "FazerCards paketini admin botda qayta tanlang" : "Paket uchun GW PID sozlanmagan",
             }),
           );
         }
@@ -350,11 +346,11 @@ export function createGamePaynetController(game) {
           return res.json(paynetError(id, paynetErrors.invalidQuantity));
         }
 
-        if (!selectedPackage.gwPid) {
+        if (!selectedPackage.gwPid || (game.key === "pubg" && !selectedPackage.gwPid.includes("|"))) {
           return res.json(
             paynetError(id, {
               ...paynetErrors.invalidQuantity,
-              message: "Paket uchun GW PID sozlanmagan",
+              message: game.key === "pubg" ? "FazerCards paketini admin botda qayta tanlang" : "Paket uchun GW PID sozlanmagan",
             }),
           );
         }
@@ -399,12 +395,9 @@ export function createGamePaynetController(game) {
         let gwResponse;
 
         try {
-          gwResponse = await createGwOrder({
-            pid: selectedPackage.gwPid,
-            trxid: String(transactionId),
-            game: game.key,
-            identity: validated.identity,
-          });
+          gwResponse = game.key === "pubg"
+            ? await createPubgOrder({ productId: selectedPackage.gwPid, playerId: validated.identity.playerId, transactionId: String(transactionId) })
+            : await createGwOrder({ pid: selectedPackage.gwPid, trxid: String(transactionId), game: game.key, identity: validated.identity });
           await applyGwResponse(order, gwResponse);
         } catch (error) {
           // A timeout/network failure is ambiguous: GW may already have accepted
@@ -495,7 +488,7 @@ export function createGamePaynetController(game) {
 
         if (order.status === "pending" && order.gwOrderId) {
           try {
-            const gwResponse = await getGwOrder(order.gwOrderId);
+            const gwResponse = await (game.key === "pubg" && /^ord-\d+$/.test(order.gwOrderId) ? getPubgOrder(order.gwOrderId) : getGwOrder(order.gwOrderId));
             await applyGwResponse(order, gwResponse);
             await refreshOrderNotification(order, game);
           } catch (error) {

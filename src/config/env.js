@@ -41,6 +41,11 @@ export const env = {
     mlbbGroupId: required("TG_GROUP_ID_MLBB"),
     pubgGroupId: required("TG_GROUP_ID_PUBG"),
   },
+  fazercards: {
+    baseUrl: required("FAZERCARDS_API_BASE_URL", "https://api.fzr.cards/api/v2"),
+    apiKey: process.env.FAZERCARDS_API_KEY || "",
+    timeoutMs: numberEnv("FAZERCARDS_API_TIMEOUT_MS", "30000"),
+  },
   gw: {
     baseUrl: required("GW_API_BASE_URL", "https://api.sonofutred.com"),
     apiKey: required("GW_API_KEY"),
