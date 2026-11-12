@@ -1,4 +1,5 @@
 import Order from "../../models/order.model.js";
+import { games } from "../../config/products.js";
 import { paynetErrors } from "../../constants/paynetErrors.js";
 import {
   notifyOrder,
@@ -214,6 +215,21 @@ function trackGwOrder(orderId, game, attempt = 0) {
 
   timer.unref?.();
   gwOrderTrackers.set(trackerKey, timer);
+}
+
+export async function resumeRecentPubgNotifications() {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const orders = await Order.find({
+    game: "pubg",
+    provider: "paynet",
+    status: { $in: ["success", "failed"] },
+    telegramMessageId: { $exists: true, $ne: null },
+    updatedAt: { $gte: since },
+  }).sort({ updatedAt: -1 }).limit(100);
+
+  for (const order of orders) {
+    await refreshOrderNotification(order, games.pubg);
+  }
 }
 
 export async function resumePendingGwOrders(game) {
