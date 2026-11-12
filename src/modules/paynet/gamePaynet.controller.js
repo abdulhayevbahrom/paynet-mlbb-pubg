@@ -143,34 +143,44 @@ function identityFromOrder(order) {
   return { playerId: String(order.fields?.player_id || "") };
 }
 
-export async function refreshOrderNotification(order, game) {
-  const lines = buildOrderMessage({
-    game,
-    identity: identityFromOrder(order),
-    quantity: order.quantity,
-    order,
-  });
+const notificationLocks = new Map();
 
-  if (!order.telegramMessageId) {
-    const message = await notifyOrder({
-      game: game.key,
-      groupId: game.groupId,
-      lines,
+export function refreshOrderNotification(order, game) {
+  const key = String(order._id);
+  const previous = notificationLocks.get(key) || Promise.resolve();
+  const current = previous.catch(() => {}).then(async () => {
+    const latest = await Order.findById(order._id);
+    if (!latest) return;
+    const lines = buildOrderMessage({
+      game,
+      identity: identityFromOrder(latest),
+      quantity: latest.quantity,
+      order: latest,
     });
 
-    if (message?.message_id) {
-      order.telegramMessageId = message.message_id;
-      await order.save();
+    if (!latest.telegramMessageId) {
+      const message = await notifyOrder({ game: game.key, groupId: game.groupId, lines });
+      if (message?.message_id) {
+        await Order.updateOne(
+          { _id: latest._id, telegramMessageId: { $exists: false } },
+          { $set: { telegramMessageId: message.message_id } },
+        );
+      }
+      return;
     }
-    return;
-  }
 
-  await updateOrderNotification({
-    game: game.key,
-    groupId: game.groupId,
-    messageId: order.telegramMessageId,
-    lines,
+    await updateOrderNotification({
+      game: game.key,
+      groupId: game.groupId,
+      messageId: latest.telegramMessageId,
+      lines,
+    });
   });
+  notificationLocks.set(key, current);
+  current.finally(() => {
+    if (notificationLocks.get(key) === current) notificationLocks.delete(key);
+  }).catch(() => {});
+  return current;
 }
 
 function localStatus(gwStatus) {
@@ -180,6 +190,17 @@ function localStatus(gwStatus) {
 }
 
 export async function applyGwResponse(order, response) {
+  const incomingStatus = response?.order?.status || response?.status;
+  if (localStatus(incomingStatus) === "pending") {
+    const finalOrder = await Order.findOne({
+      _id: order._id,
+      status: { $in: ["success", "failed", "reversed"] },
+    });
+    if (finalOrder) {
+      order.set(finalOrder.toObject());
+      return order;
+    }
+  }
   order.gwOrderId = response?.order?.id || response?.orderId || order.gwOrderId;
   order.gwStatus = response?.order?.status || response?.status || order.gwStatus;
   order.gwError = response?.order?.fail_reason || response?.error || undefined;
@@ -438,21 +459,7 @@ export function createGamePaynetController(game) {
           );
         }
 
-        const telegramMessage = await notifyOrder({
-          game: game.key,
-          groupId: game.groupId,
-          lines: buildOrderMessage({
-            game,
-            identity: validated.identity,
-            quantity: validated.quantity,
-            order,
-          }),
-        });
-
-        if (telegramMessage?.message_id) {
-          order.telegramMessageId = telegramMessage.message_id;
-          await order.save();
-        }
+        await refreshOrderNotification(order, game);
 
         if (order.status === "pending") {
           trackGwOrder(order._id, game);
