@@ -44,6 +44,7 @@ export const env = {
   fazercards: {
     baseUrl: required("FAZERCARDS_API_BASE_URL", "https://api.fzr.cards/api/v2"),
     apiKey: process.env.FAZERCARDS_API_KEY || "",
+    webhookSecret: process.env.FAZERCARDS_WEBHOOK_SECRET || "",
     timeoutMs: numberEnv("FAZERCARDS_API_TIMEOUT_MS", "30000"),
   },
   gw: {

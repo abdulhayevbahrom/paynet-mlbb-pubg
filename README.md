@@ -197,3 +197,13 @@ PUBG uchun `.env` ga `FAZERCARDS_API_KEY` qo‘shing. API manzili standart holda
 yangidan bog‘lang. Eski GW PID bilan bog‘langan PUBG paketlari buyurtma qabul
 qilmaydi. FazerCards top-up buyurtmasi `Idempotency-Key` bilan yuboriladi; holati
 `/orders/:orderId` orqali kuzatiladi.
+
+## FazerCards webhook
+
+FazerCards panelida Settings → Webhook bo‘limiga serverning ommaviy
+`https://SIZNING-DOMEN/api/fazercards/webhook` manzilini kiriting. Panelda
+yaratilgan secret’ni server `.env` fayliga `FAZERCARDS_WEBHOOK_SECRET` sifatida
+qo‘ying va servisni qayta ishga tushiring. Endpoint HMAC imzoni tekshiradi,
+so‘ng orderning joriy holatini FazerCards API’dan olib, bazani va Telegram
+xabarini yangilaydi. Webhook ishlamasa, pending orderlar 30 soniyada bir
+1 soatgacha tekshiriladi va servis qayta ishga tushganda davom etadi.

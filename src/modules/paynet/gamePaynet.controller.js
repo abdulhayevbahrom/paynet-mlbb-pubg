@@ -25,7 +25,7 @@ import {
 } from "../../utils/time.js";
 
 const gwOrderTrackers = new Map();
-const GW_POLL_INTERVAL_MS = 5000;
+const GW_POLL_INTERVAL_MS = 30000;
 const GW_POLL_MAX_ATTEMPTS = 120;
 
 function providerTransactionId(order) {
@@ -142,7 +142,7 @@ function identityFromOrder(order) {
   return { playerId: String(order.fields?.player_id || "") };
 }
 
-async function refreshOrderNotification(order, game) {
+export async function refreshOrderNotification(order, game) {
   const lines = buildOrderMessage({
     game,
     identity: identityFromOrder(order),
@@ -178,10 +178,10 @@ function localStatus(gwStatus) {
   return "pending";
 }
 
-async function applyGwResponse(order, response) {
+export async function applyGwResponse(order, response) {
   order.gwOrderId = response?.order?.id || response?.orderId || order.gwOrderId;
   order.gwStatus = response?.order?.status || response?.status || order.gwStatus;
-  order.gwError = response?.error || undefined;
+  order.gwError = response?.order?.fail_reason || response?.error || undefined;
   order.gwResponse = response;
   order.status = localStatus(response?.order?.status || response?.status);
   await order.save();

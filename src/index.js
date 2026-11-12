@@ -9,6 +9,7 @@ import { initAdminBot } from "./bot/adminBot.js";
 import { appErrorHandler, jsonParseErrorHandler } from "./middlewares/error.middleware.js";
 import { resumePendingGwOrders } from "./modules/paynet/gamePaynet.controller.js";
 import { gameList } from "./config/products.js";
+import fazercardsWebhookRouter from "./modules/paynet/fazercardsWebhook.router.js";
 
 const app = express();
 
@@ -19,6 +20,7 @@ for (const game of gameList) {
   await resumePendingGwOrders(game);
 }
 
+app.use("/api/fazercards/webhook", fazercardsWebhookRouter);
 app.use(express.json());
 app.use(jsonParseErrorHandler);
 app.use(cors());
